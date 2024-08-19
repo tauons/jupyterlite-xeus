@@ -1,0 +1,84 @@
+{
+  "metadata": {
+    "kernelspec": {
+      "name": "xpython",
+      "display_name": "Python 3.11 (XPython)",
+      "language": "python"
+    },
+    "language_info": {
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "version": "3.11.3"
+    }
+  },
+  "nbformat_minor": 4,
+  "nbformat": 4,
+  "cells": [
+    {
+      "cell_type": "raw",
+      "source": "Westland Inventory Management Algorithm\nLet's manage the resources by Tier! This allows us to restock by areas of the map.\nWe should also look at resources by Bench. \nWe should provide data about ingredients and their quantities.\nFinally, we should track all the data about each item... but that can be added later, in a linked data structure.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "raw",
+      "source": "Let us begin with some desired functionality.",
+      "metadata": {}
+    },
+    {
+      "cell_type": "raw",
+      "source": "We want a shopping list when we go out.\n\nWe would like to add the exact resource quantity excess or deficit, and the Maximum number of stacks needed, to ensure excess is not brought home.\n\nA prompt should ask us what tier we would like to pursue, then ask for quantities of each resource, per that tier, which we bother to maintain in stock. It should then calculate the number of base resources to gather, and providing a shopping list of base resources.\n\nIt should also provide a list of actual stock excess/deficit and conversion rates, to help us reduce base resource acquisition in case we get a processed resource. ",
+      "metadata": {}
+    },
+    {
+      "cell_type": "raw",
+      "source": "Objects and OOP are good friends. Class time!",
+      "metadata": {}
+    },
+    {
+      "cell_type": "code",
+      "source": "class Item:\n    def __init__(self, name, facility, min_stock, max_stock, parts_list, tier, production_area, properties):\n        self.__name = name\n        self.__facility = facility\n        self.__min_stock = min_stock\n        self.__max_stock = max_stock\n        self.__parts_list = parts_list  # List of tuples (part_name, quantity)\n        self.__tier = tier\n        self.__production_area = production_area\n        self.__properties = properties  # Dictionary for additional properties\n        self.__quantity = 0  # Current stock quantity (private)\n        self.__quantity_log = []  # To keep a log of quantity updates",
+      "metadata": {
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "code",
+      "source": "    # Getter for name\n    @property\n    def name(self):\n        return self.__name",
+      "metadata": {
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "code",
+      "source": "    # Getter for quantity\n    @property\n    def quantity(self):\n        return self.__quantity\n\n    # Setter for quantity with logging\n    @quantity.setter\n    def quantity(self, value):\n        self.__log_quantity_update(self.__quantity, value)\n        self.__quantity = value\n\n    def __log_quantity_update(self, old_quantity, new_quantity):\n        \"\"\"Private method to log the quantity changes.\"\"\"\n        self.__quantity_log.append({\n            'old_quantity': old_quantity,\n            'new_quantity': new_quantity\n        })\n\n    def get_quantity_log(self):\n        \"\"\"Public method to access the quantity log.\"\"\"\n        return self.__quantity_log\n\n    def is_below_min_stock(self):\n        \"\"\"Check if the item is below its minimum stock level.\"\"\"\n        return self.__quantity < self.__min_stock\n\n    def is_above_max_stock(self):\n        \"\"\"Check if the item is above its maximum stock level.\"\"\"\n        return self.__quantity > self.__max_stock",
+      "metadata": {
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "code",
+      "source": "class Inventory:\n    def __init__(self):\n        self.__items = {}  # Private dictionary to store items\n\n    def add_item(self, item):\n        \"\"\"Add an item to the inventory.\"\"\"\n        self.__items[item.name] = item\n\n    def update_stock(self, item_name, quantity):\n        \"\"\"Update the stock of an item in the inventory.\"\"\"\n        if item_name in self.__items:\n            self.__items[item_name].quantity = quantity\n        else:\n            print(f\"Item {item_name} not found in inventory.\")\n\n    def calculate_parts_needed(self, item_name, quantity):\n        \"\"\"Calculate the parts needed to produce a certain quantity of an item.\"\"\"\n        if item_name not in self.__items:\n            print(f\"Item {item_name} not found in inventory.\")\n            return None\n\n        parts_needed = {}\n\n        def recursive_parts(item, qty):\n            for part, part_qty in item.parts_list:\n                total_part_qty = part_qty * qty\n\n                # If the part itself has a parts list, recurse\n                if self.__items[part].parts_list:\n                    recursive_parts(self.__items[part], total_part_qty)\n                else:\n                    if part in parts_needed:\n                        parts_needed[part] += total_part_qty\n                    else:\n                        parts_needed[part] = total_part_qty\n\n        recursive_parts(self.__items[item_name], quantity)\n        return parts_needed\n\n    def generate_shopping_list_by_tier(self, tier):\n        \"\"\"Generate a shopping list for items of a specific tier.\"\"\"\n        shopping_list = {}\n        for item in self.__items.values():\n            if item.tier == tier:\n                if item.is_below_min_stock():\n                    shopping_list[item.name] = item.min_stock - item.quantity\n                elif item.is_above_max_stock():\n                    shopping_list[item.name] = item.quantity - item.max_stock\n\n        return shopping_list",
+      "metadata": {
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    },
+    {
+      "cell_type": "code",
+      "source": "# Example usage:\n\n# Create an inventory object\ninventory = Inventory()\n\n# Add items to the inventory\ninventory.add_item(Item('Widget A', 'Facility 1', 10, 50, [('Part X', 5), ('Part Y', 3)], 1, 'Area 1', {'color': 'blue'}))\ninventory.add_item(Item('Part X', 'Facility 2', 20, 100, [], 1, 'Area 2', {'material': 'steel'}))\ninventory.add_item(Item('Part Y', 'Facility 3', 30, 200, [('Part Z', 2)], 2, 'Area 3', {'size': 'small'}))\ninventory.add_item(Item('Part Z', 'Facility 4', 5, 25, [], 2, 'Area 4', {'weight': 'light'}))\n\n# Update stock with logging\ninventory.update_stock('Widget A', 5)\ninventory.update_stock('Part X', 50)\ninventory.update_stock('Part Y', 15)\ninventory.update_stock('Part Z', 10)\n\n# Accessing the quantity log of Widget A\nwidget_a = inventory._Inventory__items['Widget A']\nprint(\"Quantity log for Widget A:\", widget_a.get_quantity_log())",
+      "metadata": {
+        "trusted": true
+      },
+      "outputs": [],
+      "execution_count": null
+    }
+  ]
+}
